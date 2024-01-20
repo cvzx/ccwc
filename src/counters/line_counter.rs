@@ -1,4 +1,4 @@
-use crate::counter::Countable;
+use crate::Countable;
 use std::error::Error;
 use std::fs;
 
@@ -13,11 +13,11 @@ impl<'a> LineCounter<'a> {
 }
 
 impl<'a> Countable for LineCounter<'a> {
-    fn len(&self) -> Result<String, Box<dyn Error>> {
+    fn len(&self) -> Result<usize, Box<dyn Error>> {
         let file_path = &self.file_path;
         let contents = fs::read_to_string(file_path)?;
 
-        Ok(contents.lines().count().to_string())
+        Ok(contents.lines().count())
     }
 }
 
@@ -30,6 +30,6 @@ mod tests {
         let file_path = "fixtures/lorem.txt";
         let line_counter = LineCounter::new(file_path);
 
-        assert_eq!(line_counter.len().unwrap(), "3");
+        assert_eq!(line_counter.len().unwrap(), 3);
     }
 }

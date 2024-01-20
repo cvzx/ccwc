@@ -1,4 +1,4 @@
-use crate::counter::Countable;
+use crate::Countable;
 use std::error::Error;
 use std::fs;
 
@@ -13,11 +13,11 @@ impl<'a> ByteCounter<'a> {
 }
 
 impl<'a> Countable for ByteCounter<'a> {
-    fn len(&self) -> Result<String, Box<dyn Error>> {
+    fn len(&self) -> Result<usize, Box<dyn Error>> {
         let file_path = &self.file_path;
         let contents = fs::read_to_string(file_path)?;
 
-        Ok(contents.len().to_string())
+        Ok(contents.len())
     }
 }
 
@@ -30,6 +30,6 @@ mod tests {
         let file_path = "fixtures/lorem.txt";
         let byte_counter = ByteCounter::new(file_path);
 
-        assert_eq!(byte_counter.len().unwrap(), "42");
+        assert_eq!(byte_counter.len().unwrap(), 42);
     }
 }

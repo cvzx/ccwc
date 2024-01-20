@@ -1,27 +1,26 @@
+use clap::ArgMatches;
+
 pub struct Config {
-    pub counter_type: String,
+    pub count_bytes: bool,
+    pub count_lines: bool,
+    pub count_words: bool,
+    pub count_chars: bool,
+    pub count_all: bool,
     pub file_path: String,
 }
 
 impl Config {
-    pub fn build(mut args: impl Iterator<Item = String>) -> Result<Config, &'static str> {
-        args.next(); // skip the first argument
-
-        // can be optional
-        let counter_type = match args.next() {
-            Some(arg) => arg,
-            None => return Err("Didn't get a counter type"),
-        };
-
-        // can be optional
-        let file_path = match args.next() {
-            Some(arg) => arg,
-            None => return Err("Didn't get a file path"),
-        };
-
+    pub fn build(matches: ArgMatches) -> Result<Config, &'static str> {
         Ok(Config {
-            counter_type,
-            file_path,
+            count_bytes: matches.get_flag("count_bytes"),
+            count_lines: matches.get_flag("count_lines"),
+            count_words: matches.get_flag("count_words"),
+            count_chars: matches.get_flag("count_chars"),
+            count_all: matches.get_flag("count_all"),
+            file_path: matches
+                .get_one::<String>("file_path")
+                .expect("missing file path")
+                .to_string(),
         })
     }
 }

@@ -1,4 +1,4 @@
-use crate::counter::Countable;
+use crate::Countable;
 use std::error::Error;
 use std::fs;
 
@@ -13,11 +13,11 @@ impl<'a> WordCounter<'a> {
 }
 
 impl<'a> Countable for WordCounter<'a> {
-    fn len(&self) -> Result<String, Box<dyn Error>> {
+    fn len(&self) -> Result<usize, Box<dyn Error>> {
         let file_path = &self.file_path;
         let contents = fs::read_to_string(file_path)?;
 
-        Ok(contents.split_whitespace().count().to_string())
+        Ok(contents.split_whitespace().count())
     }
 }
 
@@ -30,6 +30,6 @@ mod tests {
         let file_path = "fixtures/lorem.txt";
         let word_counter = WordCounter::new(file_path);
 
-        assert_eq!(word_counter.len().unwrap(), "6");
+        assert_eq!(word_counter.len().unwrap(), 6);
     }
 }
