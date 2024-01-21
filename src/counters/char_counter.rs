@@ -1,20 +1,21 @@
 use crate::Countable;
 use std::error::Error;
 use std::fs;
+use std::rc::Rc;
 
-pub struct CharCounter<'a> {
-    file_path: &'a str,
+pub struct CharCounter {
+    file_path: Rc<String>,
 }
 
-impl<'a> CharCounter<'a> {
-    pub fn new(file_path: &'a str) -> Self {
+impl CharCounter {
+    pub fn new(file_path: Rc<String>) -> Self {
         Self { file_path }
     }
 }
 
-impl<'a> Countable for CharCounter<'a> {
+impl Countable for CharCounter {
     fn len(&self) -> Result<usize, Box<dyn Error>> {
-        let file_path = &self.file_path;
+        let file_path: &str = &self.file_path;
         let contents = fs::read_to_string(file_path)?;
 
         Ok(contents.chars().count())
@@ -27,7 +28,7 @@ mod tests {
 
     #[test]
     fn it_counts_chars() {
-        let file_path = "fixtures/lorem.txt";
+        let file_path = Rc::new("fixtures/lorem.txt".to_string());
         let char_counter = CharCounter::new(file_path);
 
         assert_eq!(char_counter.len().unwrap(), 42);

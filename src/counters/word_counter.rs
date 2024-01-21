@@ -1,20 +1,21 @@
 use crate::Countable;
 use std::error::Error;
 use std::fs;
+use std::rc::Rc;
 
-pub struct WordCounter<'a> {
-    file_path: &'a str,
+pub struct WordCounter {
+    file_path: Rc<String>,
 }
 
-impl<'a> WordCounter<'a> {
-    pub fn new(file_path: &'a str) -> Self {
+impl WordCounter {
+    pub fn new(file_path: Rc<String>) -> Self {
         Self { file_path }
     }
 }
 
-impl<'a> Countable for WordCounter<'a> {
+impl Countable for WordCounter {
     fn len(&self) -> Result<usize, Box<dyn Error>> {
-        let file_path = &self.file_path;
+        let file_path: &str = &self.file_path;
         let contents = fs::read_to_string(file_path)?;
 
         Ok(contents.split_whitespace().count())
@@ -27,7 +28,7 @@ mod tests {
 
     #[test]
     fn it_counts_words() {
-        let file_path = "fixtures/lorem.txt";
+        let file_path = Rc::new("fixtures/lorem.txt".to_string());
         let word_counter = WordCounter::new(file_path);
 
         assert_eq!(word_counter.len().unwrap(), 6);
