@@ -4,12 +4,7 @@ use clap::{command, Arg, ArgAction, ArgMatches};
 
 fn main() {
     let matches = parse_arguments();
-
-    let config = Config::build(matches).unwrap_or_else(|err| {
-        eprintln!("Problem parsing arguments: {}", err);
-        std::process::exit(1);
-    });
-
+    let config = Config::build(matches);
     let result = Wc::new(config).run();
 
     println!("{result}");
