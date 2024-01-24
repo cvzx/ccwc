@@ -1,22 +1,21 @@
 use crate::Countable;
-use std::error::Error;
-use std::fs;
+use crate::Source;
+use std::io;
 use std::rc::Rc;
 
 pub struct LineCounter {
-    file_path: Rc<String>,
+    source: Rc<dyn Source>,
 }
 
 impl LineCounter {
-    pub fn new(file_path: Rc<String>) -> Self {
-        Self { file_path }
+    pub fn new(source: Rc<dyn Source>) -> Self {
+        Self { source }
     }
 }
 
 impl Countable for LineCounter {
-    fn len(&self) -> Result<usize, Box<dyn Error>> {
-        let file_path: &str = &self.file_path;
-        let contents = fs::read_to_string(file_path)?;
+    fn len(&self) -> Result<usize, io::Error> {
+        let contents = self.source.read()?;
 
         Ok(contents.lines().count())
     }
@@ -25,11 +24,20 @@ impl Countable for LineCounter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+
+    struct MockedSource {}
+
+    impl Source for MockedSource {
+        fn read(&self) -> Result<String, io::Error> {
+            fs::read_to_string("fixtures/lorem.txt")
+        }
+    }
 
     #[test]
     fn it_counts_lines() {
-        let file_path = Rc::new("fixtures/lorem.txt".to_string());
-        let line_counter = LineCounter::new(file_path);
+        let source = MockedSource {};
+        let line_counter = LineCounter::new(Rc::new(source));
 
         assert_eq!(line_counter.len().unwrap(), 3);
     }

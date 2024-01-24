@@ -1,22 +1,21 @@
 use crate::Countable;
-use std::error::Error;
-use std::fs;
+use crate::Source;
+use std::io;
 use std::rc::Rc;
 
 pub struct ByteCounter {
-    file_path: Rc<String>,
+    source: Rc<dyn Source>,
 }
 
 impl ByteCounter {
-    pub fn new(file_path: Rc<String>) -> Self {
-        Self { file_path }
+    pub fn new(source: Rc<dyn Source>) -> Self {
+        Self { source }
     }
 }
 
 impl Countable for ByteCounter {
-    fn len(&self) -> Result<usize, Box<dyn Error>> {
-        let file_path: &str = &self.file_path;
-        let contents = fs::read_to_string(file_path)?;
+    fn len(&self) -> Result<usize, io::Error> {
+        let contents = self.source.read()?;
 
         Ok(contents.len())
     }
@@ -25,11 +24,20 @@ impl Countable for ByteCounter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+
+    struct MockedSource {}
+
+    impl Source for MockedSource {
+        fn read(&self) -> Result<String, io::Error> {
+            fs::read_to_string("fixtures/lorem.txt")
+        }
+    }
 
     #[test]
     fn it_counts_bytes() {
-        let file_path = Rc::new("fixtures/lorem.txt".to_string());
-        let byte_counter = ByteCounter::new(file_path);
+        let source = MockedSource {};
+        let byte_counter = ByteCounter::new(Rc::new(source));
 
         assert_eq!(byte_counter.len().unwrap(), 42);
     }
