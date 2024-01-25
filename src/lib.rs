@@ -7,7 +7,7 @@ use crate::counters::{
 };
 use clap::ArgMatches;
 use std::fs;
-use std::io;
+use std::io::{self, Read};
 use std::rc::Rc;
 
 pub trait Countable {
@@ -16,6 +16,10 @@ pub trait Countable {
 
 pub trait Source {
     fn read(&self) -> Result<String, io::Error>;
+
+    fn title(&self) -> &str {
+        ""
+    }
 }
 
 struct FileSource {
@@ -25,6 +29,21 @@ struct FileSource {
 impl Source for FileSource {
     fn read(&self) -> Result<String, io::Error> {
         fs::read_to_string(&self.file_path)
+    }
+
+    fn title(&self) -> &str {
+        &self.file_path
+    }
+}
+
+struct StdinSource {}
+
+impl Source for StdinSource {
+    fn read(&self) -> Result<String, io::Error> {
+        let mut buffer = String::new();
+        std::io::stdin().read_to_string(&mut buffer)?;
+
+        Ok(buffer)
     }
 }
 
@@ -48,7 +67,7 @@ impl Wc {
             .map(|counter| counter.len().expect("Counting error").to_string())
             .collect();
 
-        format!("{}", counts.join(" "))
+        format!("{} {}", counts.join(" "), self.source.title())
     }
 
     fn build_source(matches: &ArgMatches) -> Rc<dyn Source> {
@@ -56,7 +75,7 @@ impl Wc {
             Some(x) => Rc::new(FileSource {
                 file_path: x.to_string(),
             }),
-            None => panic!("TEST"),
+            None => Rc::new(StdinSource {}),
         }
     }
 
@@ -100,11 +119,11 @@ mod tests {
     use clap::{Arg, ArgAction, Command};
 
     #[test]
-    fn return_true_counter_results() {
+    fn return_file_counts_accoring_to_flags_privided() {
         let matches = setup_mock_clap_matches(vec!["my_prog", "-l", "-c", "fixtures/lorem.txt"]);
         let wc = Wc::new(matches);
 
-        assert_eq!(wc.count(), "3 42")
+        assert_eq!(wc.count(), "3 42 fixtures/lorem.txt")
     }
 
     #[test]
@@ -112,8 +131,10 @@ mod tests {
         let matches = setup_mock_clap_matches(vec!["my_prog", "fixtures/lorem.txt"]);
         let wc = Wc::new(matches);
 
-        assert_eq!(wc.count(), "3 6 42")
+        assert_eq!(wc.count(), "3 6 42 fixtures/lorem.txt")
     }
+
+    // TODO:  Implement stdin case
 
     fn setup_mock_clap_matches(args: Vec<&str>) -> ArgMatches {
         Command::new("my_prog")
