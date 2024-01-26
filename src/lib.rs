@@ -1,12 +1,8 @@
 pub mod config;
 pub mod counters;
 
-use crate::counters::{
-    byte_counter::ByteCounter, char_counter::CharCounter, line_counter::LineCounter,
-    word_counter::WordCounter,
-};
-
 use crate::config::Config;
+use crate::counters::Counter;
 use std::fs;
 use std::io::{self, Read};
 use std::rc::Rc;
@@ -50,7 +46,7 @@ impl Source for StdinSource {
 
 pub struct Wc {
     source: Rc<dyn Source>,
-    counters: Vec<Box<dyn Countable>>,
+    counters: Vec<Counter>,
 }
 
 impl Wc {
@@ -94,38 +90,24 @@ impl Wc {
         }
     }
 
-    fn build_counters<'a>(
-        config: &Config,
-        source: &Rc<dyn Source>,
-    ) -> Vec<Box<dyn Countable + 'a>> {
-        config.flags()
-                .into_iter()
-                .filter_map(|(flag, value)| {
-                    if value {
-                        match flag {
-                            "count_lines" => {
-                                Some(Box::new(LineCounter::new(Rc::clone(source)))
-                                    as Box<dyn Countable>)
-                            }
-                            "count_words" => {
-                                Some(Box::new(WordCounter::new(Rc::clone(source)))
-                                    as Box<dyn Countable>)
-                            }
-                            "count_chars" => {
-                                Some(Box::new(CharCounter::new(Rc::clone(source)))
-                                    as Box<dyn Countable>)
-                            }
-                            "count_bytes" => {
-                                Some(Box::new(ByteCounter::new(Rc::clone(source)))
-                                    as Box<dyn Countable>)
-                            }
-                            _ => panic!("Wrong counter"),
-                        }
-                    } else {
-                        None
+    fn build_counters<'a>(config: &Config, source: &Rc<dyn Source>) -> Vec<Counter> {
+        config
+            .flags()
+            .into_iter()
+            .filter_map(|(flag, value)| {
+                if value {
+                    match flag {
+                        "count_lines" => Some(Counter::new("Lines", Rc::clone(source))),
+                        "count_words" => Some(Counter::new("Words", Rc::clone(source))),
+                        "count_chars" => Some(Counter::new("Chars", Rc::clone(source))),
+                        "count_bytes" => Some(Counter::new("Bytes", Rc::clone(source))),
+                        _ => panic!("Wrong counter"),
                     }
-                })
-                .collect()
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 }
 
