@@ -1,9 +1,11 @@
+use ccwc::config::Config;
 use ccwc::Wc;
 use clap::{command, Arg, ArgAction, ArgMatches};
 
 fn main() {
     let matches = parse_arguments();
-    let result = Wc::new(matches).count();
+    let config = Config::build_from_matches(matches);
+    let result = Wc::new(config).count();
 
     println!("{result}");
 }
@@ -34,12 +36,6 @@ fn parse_arguments() -> ArgMatches {
                 .long("chars")
                 .action(ArgAction::SetTrue),
         )
-        .arg(
-            Arg::new("count_all")
-                .short('a')
-                .long("all")
-                .action(ArgAction::SetTrue),
-        )
-        .arg(Arg::new("file_path"))
+        .arg(Arg::new("file_path").action(ArgAction::Set))
         .get_matches()
 }

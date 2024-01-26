@@ -5,7 +5,8 @@ use crate::counters::{
     byte_counter::ByteCounter, char_counter::CharCounter, line_counter::LineCounter,
     word_counter::WordCounter,
 };
-use clap::ArgMatches;
+
+use crate::config::Config;
 use std::fs;
 use std::io::{self, Read};
 use std::rc::Rc;
@@ -53,9 +54,10 @@ pub struct Wc {
 }
 
 impl Wc {
-    pub fn new(matches: ArgMatches) -> Self {
-        let source = Self::build_source(&matches);
-        let counters = Self::build_counters(&matches, &source);
+    pub fn new(config: Config) -> Self {
+        let config = Self::modify_config_if_needed(config);
+        let source = Self::build_source(&config);
+        let counters = Self::build_counters(&config, &source);
 
         Self { source, counters }
     }
@@ -70,105 +72,95 @@ impl Wc {
         format!("{} {}", counts.join(" "), self.source.title())
     }
 
-    fn build_source(matches: &ArgMatches) -> Rc<dyn Source> {
-        match matches.get_one::<String>("file_path") {
-            Some(x) => Rc::new(FileSource {
-                file_path: x.to_string(),
+    fn modify_config_if_needed(config: Config) -> Config {
+        if config.flags().iter().all(|(_, value)| !value) {
+            Config {
+                count_lines: true,
+                count_words: true,
+                count_bytes: true,
+                ..config
+            }
+        } else {
+            config
+        }
+    }
+
+    fn build_source(config: &Config) -> Rc<dyn Source> {
+        match &config.file_path {
+            Some(file_path) => Rc::new(FileSource {
+                file_path: file_path.clone(),
             }),
             None => Rc::new(StdinSource {}),
         }
     }
 
     fn build_counters<'a>(
-        matches: &ArgMatches,
+        config: &Config,
         source: &Rc<dyn Source>,
     ) -> Vec<Box<dyn Countable + 'a>> {
-        let mut flags: Vec<&str> = vec!["count_lines", "count_words", "count_chars", "count_bytes"]
-            .into_iter()
-            .filter(|&flag| matches.get_flag(flag))
-            .collect();
-
-        if flags.is_empty() {
-            flags = vec!["count_lines", "count_words", "count_bytes"]
-        }
-
-        flags
-            .into_iter()
-            .map(|flag| match flag {
-                "count_lines" => {
-                    Box::new(LineCounter::new(Rc::clone(source))) as Box<dyn Countable>
-                }
-                "count_words" => {
-                    Box::new(WordCounter::new(Rc::clone(source))) as Box<dyn Countable>
-                }
-                "count_chars" => {
-                    Box::new(CharCounter::new(Rc::clone(source))) as Box<dyn Countable>
-                }
-                "count_bytes" => {
-                    Box::new(ByteCounter::new(Rc::clone(source))) as Box<dyn Countable>
-                }
-                _ => panic!("Wrong counter"),
-            })
-            .collect()
+        config.flags()
+                .into_iter()
+                .filter_map(|(flag, value)| {
+                    if value {
+                        match flag {
+                            "count_lines" => {
+                                Some(Box::new(LineCounter::new(Rc::clone(source)))
+                                    as Box<dyn Countable>)
+                            }
+                            "count_words" => {
+                                Some(Box::new(WordCounter::new(Rc::clone(source)))
+                                    as Box<dyn Countable>)
+                            }
+                            "count_chars" => {
+                                Some(Box::new(CharCounter::new(Rc::clone(source)))
+                                    as Box<dyn Countable>)
+                            }
+                            "count_bytes" => {
+                                Some(Box::new(ByteCounter::new(Rc::clone(source)))
+                                    as Box<dyn Countable>)
+                            }
+                            _ => panic!("Wrong counter"),
+                        }
+                    } else {
+                        None
+                    }
+                })
+                .collect()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use clap::{Arg, ArgAction, Command};
 
     #[test]
     fn return_file_counts_accoring_to_flags_privided() {
-        let matches = setup_mock_clap_matches(vec!["my_prog", "-l", "-c", "fixtures/lorem.txt"]);
-        let wc = Wc::new(matches);
+        let config = Config {
+            count_lines: true,
+            count_words: true,
+            count_chars: false,
+            count_bytes: false,
+            file_path: Some(String::from("fixtures/lorem.txt")),
+        };
 
-        assert_eq!(wc.count(), "3 42 fixtures/lorem.txt")
+        let wc = Wc::new(config);
+
+        assert_eq!(wc.count(), "3 6 fixtures/lorem.txt")
     }
 
     #[test]
     fn return_line_word_bytes_counter_results_if_no_flags_set() {
-        let matches = setup_mock_clap_matches(vec!["my_prog", "fixtures/lorem.txt"]);
-        let wc = Wc::new(matches);
+        let config = Config {
+            count_lines: false,
+            count_words: false,
+            count_chars: false,
+            count_bytes: false,
+            file_path: Some(String::from("fixtures/lorem.txt")),
+        };
+        let wc = Wc::new(config);
 
         assert_eq!(wc.count(), "3 6 42 fixtures/lorem.txt")
     }
 
     // TODO:  Implement stdin case
-
-    fn setup_mock_clap_matches(args: Vec<&str>) -> ArgMatches {
-        Command::new("my_prog")
-            .arg(
-                Arg::new("count_bytes")
-                    .short('c')
-                    .long("bytes")
-                    .action(ArgAction::SetTrue),
-            )
-            .arg(
-                Arg::new("count_lines")
-                    .short('l')
-                    .long("lines")
-                    .action(ArgAction::SetTrue),
-            )
-            .arg(
-                Arg::new("count_words")
-                    .short('w')
-                    .long("words")
-                    .action(ArgAction::SetTrue),
-            )
-            .arg(
-                Arg::new("count_chars")
-                    .short('m')
-                    .long("chars")
-                    .action(ArgAction::SetTrue),
-            )
-            .arg(
-                Arg::new("count_all")
-                    .short('a')
-                    .long("all")
-                    .action(ArgAction::SetTrue),
-            )
-            .arg(Arg::new("file_path"))
-            .get_matches_from(args)
-    }
 }
