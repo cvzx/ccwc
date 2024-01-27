@@ -1,58 +1,21 @@
 pub mod config;
 pub mod counters;
+pub mod sources;
 
 use crate::config::Config;
 use crate::counters::Counter;
-use std::fs;
-use std::io::{self, Read};
+use crate::sources::Source;
 use std::rc::Rc;
 
-pub trait Countable {
-    fn len(&self) -> Result<usize, io::Error>;
-}
-
-pub trait Source {
-    fn read(&self) -> Result<String, io::Error>;
-
-    fn title(&self) -> &str {
-        ""
-    }
-}
-
-struct FileSource {
-    file_path: String,
-}
-
-impl Source for FileSource {
-    fn read(&self) -> Result<String, io::Error> {
-        fs::read_to_string(&self.file_path)
-    }
-
-    fn title(&self) -> &str {
-        &self.file_path
-    }
-}
-
-struct StdinSource {}
-
-impl Source for StdinSource {
-    fn read(&self) -> Result<String, io::Error> {
-        let mut buffer = String::new();
-        std::io::stdin().read_to_string(&mut buffer)?;
-
-        Ok(buffer)
-    }
-}
-
 pub struct Wc {
-    source: Rc<dyn Source>,
+    source: Rc<Source>,
     counters: Vec<Counter>,
 }
 
 impl Wc {
     pub fn new(config: Config) -> Self {
         let config = Self::modify_config_if_needed(config);
-        let source = Self::build_source(&config);
+        let source = Rc::new(Self::build_source(&config));
         let counters = Self::build_counters(&config, &source);
 
         Self { source, counters }
@@ -81,16 +44,14 @@ impl Wc {
         }
     }
 
-    fn build_source(config: &Config) -> Rc<dyn Source> {
+    fn build_source(config: &Config) -> Source {
         match &config.file_path {
-            Some(file_path) => Rc::new(FileSource {
-                file_path: file_path.clone(),
-            }),
-            None => Rc::new(StdinSource {}),
+            Some(file_path) => Source::File(file_path.to_string()),
+            None => Source::StdIn,
         }
     }
 
-    fn build_counters<'a>(config: &Config, source: &Rc<dyn Source>) -> Vec<Counter> {
+    fn build_counters(config: &Config, source: &Rc<Source>) -> Vec<Counter> {
         config
             .flags()
             .into_iter()
