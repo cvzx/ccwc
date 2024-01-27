@@ -8,15 +8,16 @@ use crate::sources::Source;
 use std::rc::Rc;
 
 pub struct Wc {
-    source: Rc<Source>,
+    source: Source,
     counters: Vec<Counter>,
 }
 
 impl Wc {
     pub fn new(config: Config) -> Self {
         let config = Self::modify_config_if_needed(config);
-        let source = Rc::new(Self::build_source(&config));
-        let counters = Self::build_counters(&config, &source);
+        let source = Self::build_source(&config);
+        let content = Rc::new(source.read().expect("Error during reading content"));
+        let counters = Self::build_counters(&config, content);
 
         Self { source, counters }
     }
@@ -25,7 +26,7 @@ impl Wc {
         let counts: Vec<String> = self
             .counters
             .iter()
-            .map(|counter| counter.len().expect("Counting error").to_string())
+            .map(|counter| counter.len().to_string())
             .collect();
 
         format!("{} {}", counts.join(" "), self.source.title())
@@ -51,17 +52,17 @@ impl Wc {
         }
     }
 
-    fn build_counters(config: &Config, source: &Rc<Source>) -> Vec<Counter> {
+    fn build_counters(config: &Config, content: Rc<String>) -> Vec<Counter> {
         config
             .flags()
             .into_iter()
             .filter_map(|(flag, value)| {
                 if value {
                     match flag {
-                        "count_lines" => Some(Counter::new("Lines", Rc::clone(source))),
-                        "count_words" => Some(Counter::new("Words", Rc::clone(source))),
-                        "count_chars" => Some(Counter::new("Chars", Rc::clone(source))),
-                        "count_bytes" => Some(Counter::new("Bytes", Rc::clone(source))),
+                        "count_lines" => Some(Counter::new("Lines", Rc::clone(&content))),
+                        "count_words" => Some(Counter::new("Words", Rc::clone(&content))),
+                        "count_chars" => Some(Counter::new("Chars", Rc::clone(&content))),
+                        "count_bytes" => Some(Counter::new("Bytes", Rc::clone(&content))),
                         _ => panic!("Wrong counter"),
                     }
                 } else {

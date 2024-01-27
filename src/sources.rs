@@ -32,3 +32,20 @@ impl Source {
         Ok(buffer)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn it_reads_file() {
+        let file_source = Source::File("fixtures/lorem.txt".to_string());
+
+        assert_eq!(
+            file_source.read().unwrap(),
+            fs::read_to_string("fixtures/lorem.txt").unwrap()
+        );
+    }
+
+    // TODO: implement stdin case //
+}

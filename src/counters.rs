@@ -1,84 +1,83 @@
-use crate::Source;
 use std::rc::Rc;
 
 pub enum Counter {
-    Byte(Rc<Source>),
-    Char(Rc<Source>),
-    Line(Rc<Source>),
-    Word(Rc<Source>),
+    Byte(Rc<String>),
+    Char(Rc<String>),
+    Line(Rc<String>),
+    Word(Rc<String>),
 }
 
 impl Counter {
-    pub fn new(counter_type: &str, source: Rc<Source>) -> Self {
+    pub fn new(counter_type: &str, content: Rc<String>) -> Self {
         match counter_type {
-            "Lines" => Self::Line(source),
-            "Words" => Self::Word(source),
-            "Chars" => Self::Char(source),
-            "Bytes" => Self::Byte(source),
+            "Lines" => Self::Line(content),
+            "Words" => Self::Word(content),
+            "Chars" => Self::Char(content),
+            "Bytes" => Self::Byte(content),
             _ => panic!("Unknown counter type"),
         }
     }
 
-    pub fn len(&self) -> Result<usize, std::io::Error> {
+    pub fn len(&self) -> usize {
         match self {
-            Counter::Byte(source) => self.count_bytes(source),
-            Counter::Char(source) => self.count_chars(source),
-            Counter::Line(source) => self.count_lines(source),
-            Counter::Word(source) => self.count_words(source),
+            Counter::Byte(content) => self.count_bytes(content),
+            Counter::Char(content) => self.count_chars(content),
+            Counter::Line(content) => self.count_lines(content),
+            Counter::Word(content) => self.count_words(content),
         }
     }
 
-    fn count_bytes(&self, source: &Source) -> Result<usize, std::io::Error> {
-        Ok(source.read()?.len())
+    fn count_bytes(&self, content: &Rc<String>) -> usize {
+        content.len()
     }
 
-    fn count_chars(&self, source: &Source) -> Result<usize, std::io::Error> {
-        Ok(source.read()?.chars().count())
+    fn count_chars(&self, content: &Rc<String>) -> usize {
+        content.chars().count()
     }
 
-    fn count_lines(&self, source: &Source) -> Result<usize, std::io::Error> {
-        Ok(source.read()?.lines().count())
+    fn count_lines(&self, content: &Rc<String>) -> usize {
+        content.lines().count()
     }
 
-    fn count_words(&self, source: &Source) -> Result<usize, std::io::Error> {
-        Ok(source.read()?.split_whitespace().count())
+    fn count_words(&self, content: &Rc<String>) -> usize {
+        content.split_whitespace().count()
     }
 }
 
-// Add tests for each len() type
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
 
     #[test]
     fn it_counts_bytes() {
-        let source = Source::File("fixtures/lorem.txt".to_string());
-        let counter = Counter::Byte(Rc::new(source));
+        let content = Rc::new(fs::read_to_string("fixtures/lorem.txt").unwrap());
+        let counter = Counter::Byte(content);
 
-        assert_eq!(counter.len().unwrap(), 42);
+        assert_eq!(counter.len(), 42);
     }
 
     #[test]
     fn it_counts_chars() {
-        let source = Source::File("fixtures/lorem.txt".to_string());
-        let counter = Counter::Char(Rc::new(source));
+        let content = Rc::new(fs::read_to_string("fixtures/lorem.txt").unwrap());
+        let counter = Counter::Char(content);
 
-        assert_eq!(counter.len().unwrap(), 42);
+        assert_eq!(counter.len(), 42);
     }
 
     #[test]
     fn it_counts_lines() {
-        let source = Source::File("fixtures/lorem.txt".to_string());
-        let counter = Counter::Line(Rc::new(source));
+        let content = Rc::new(fs::read_to_string("fixtures/lorem.txt").unwrap());
+        let counter = Counter::Line(content);
 
-        assert_eq!(counter.len().unwrap(), 3);
+        assert_eq!(counter.len(), 3);
     }
 
     #[test]
     fn it_counts_words() {
-        let source = Source::File("fixtures/lorem.txt".to_string());
-        let counter = Counter::Word(Rc::new(source));
+        let content = Rc::new(fs::read_to_string("fixtures/lorem.txt").unwrap());
+        let counter = Counter::Word(content);
 
-        assert_eq!(counter.len().unwrap(), 6);
+        assert_eq!(counter.len(), 6);
     }
 }
