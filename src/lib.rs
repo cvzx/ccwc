@@ -1,25 +1,27 @@
 pub mod config;
 pub mod counters;
-pub mod sources;
 
 use crate::config::Config;
 use crate::counters::Counter;
-use crate::sources::Source;
+use std::io::Read;
 use std::rc::Rc;
 
 pub struct Wc {
-    source: Source,
+    source_name: Option<String>,
     counters: Vec<Counter>,
 }
 
 impl Wc {
-    pub fn new(config: Config) -> Self {
+    pub fn new(input: impl Read, config: Config) -> Self {
         let config = Self::modify_config_if_needed(config);
-        let source = Self::build_source(&config);
-        let content = Rc::new(source.read().expect("Error during reading content"));
-        let counters = Self::build_counters(&config, content);
+        let content = Self::read_content(input);
+        let counters = Self::build_counters(&config, Rc::new(content));
+        let source_name = config.file_path;
 
-        Self { source, counters }
+        Self {
+            source_name,
+            counters,
+        }
     }
 
     pub fn count(&self) -> String {
@@ -29,7 +31,10 @@ impl Wc {
             .map(|counter| counter.len().to_string())
             .collect();
 
-        format!("{} {}", counts.join(" "), self.source.title())
+        match &self.source_name {
+            Some(name) => format!(" {}  {}", counts.join("  "), name),
+            None => format!(" {}", counts.join("  ")),
+        }
     }
 
     fn modify_config_if_needed(config: Config) -> Config {
@@ -45,11 +50,14 @@ impl Wc {
         }
     }
 
-    fn build_source(config: &Config) -> Source {
-        match &config.file_path {
-            Some(file_path) => Source::File(file_path.to_string()),
-            None => Source::StdIn,
-        }
+    fn read_content(mut input: impl Read) -> String {
+        let mut content = String::new();
+
+        input
+            .read_to_string(&mut content)
+            .expect("Error reading content");
+
+        content
     }
 
     fn build_counters(config: &Config, content: Rc<String>) -> Vec<Counter> {
@@ -79,6 +87,8 @@ mod tests {
 
     #[test]
     fn return_file_counts_accoring_to_flags_privided() {
+        let input = b"test test\ntest1 test1\ntest2 test2";
+
         let config = Config {
             count_lines: true,
             count_words: true,
@@ -87,24 +97,25 @@ mod tests {
             file_path: Some(String::from("fixtures/lorem.txt")),
         };
 
-        let wc = Wc::new(config);
+        let wc = Wc::new(&input[..], config);
 
-        assert_eq!(wc.count(), "3 6 fixtures/lorem.txt")
+        assert_eq!(wc.count(), " 3  6  fixtures/lorem.txt")
     }
 
     #[test]
     fn return_line_word_bytes_counter_results_if_no_flags_set() {
+        let input = b"test test\ntest1 test1\ntest2 test2";
+
         let config = Config {
             count_lines: false,
             count_words: false,
             count_chars: false,
             count_bytes: false,
-            file_path: Some(String::from("fixtures/lorem.txt")),
+            // stdin case
+            file_path: None,
         };
-        let wc = Wc::new(config);
+        let wc = Wc::new(&input[..], config);
 
-        assert_eq!(wc.count(), "3 6 42 fixtures/lorem.txt")
+        assert_eq!(wc.count(), " 3  6  33")
     }
-
-    // TODO:  Implement stdin case
 }
