@@ -1,14 +1,14 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 pub enum Counter {
-    Byte(Rc<String>),
-    Char(Rc<String>),
-    Line(Rc<String>),
-    Word(Rc<String>),
+    Byte(Arc<String>),
+    Char(Arc<String>),
+    Line(Arc<String>),
+    Word(Arc<String>),
 }
 
 impl Counter {
-    pub fn new(counter_type: &str, content: Rc<String>) -> Self {
+    pub fn new(counter_type: &str, content: Arc<String>) -> Self {
         match counter_type {
             "Lines" => Self::Line(content),
             "Words" => Self::Word(content),
@@ -27,19 +27,19 @@ impl Counter {
         }
     }
 
-    fn count_bytes(&self, content: &Rc<String>) -> usize {
+    fn count_bytes(&self, content: &Arc<String>) -> usize {
         content.len()
     }
 
-    fn count_chars(&self, content: &Rc<String>) -> usize {
+    fn count_chars(&self, content: &Arc<String>) -> usize {
         content.chars().count()
     }
 
-    fn count_lines(&self, content: &Rc<String>) -> usize {
+    fn count_lines(&self, content: &Arc<String>) -> usize {
         content.lines().count()
     }
 
-    fn count_words(&self, content: &Rc<String>) -> usize {
+    fn count_words(&self, content: &Arc<String>) -> usize {
         content.split_whitespace().count()
     }
 }
@@ -51,7 +51,7 @@ mod tests {
 
     #[test]
     fn it_counts_bytes() {
-        let content = Rc::new(fs::read_to_string("fixtures/lorem.txt").unwrap());
+        let content = Arc::new(fs::read_to_string("fixtures/lorem.txt").unwrap());
         let counter = Counter::Byte(content);
 
         assert_eq!(counter.len(), 42);
@@ -59,7 +59,7 @@ mod tests {
 
     #[test]
     fn it_counts_chars() {
-        let content = Rc::new(fs::read_to_string("fixtures/lorem.txt").unwrap());
+        let content = Arc::new(fs::read_to_string("fixtures/lorem.txt").unwrap());
         let counter = Counter::Char(content);
 
         assert_eq!(counter.len(), 42);
@@ -67,7 +67,7 @@ mod tests {
 
     #[test]
     fn it_counts_lines() {
-        let content = Rc::new(fs::read_to_string("fixtures/lorem.txt").unwrap());
+        let content = Arc::new(fs::read_to_string("fixtures/lorem.txt").unwrap());
         let counter = Counter::Line(content);
 
         assert_eq!(counter.len(), 3);
@@ -75,7 +75,7 @@ mod tests {
 
     #[test]
     fn it_counts_words() {
-        let content = Rc::new(fs::read_to_string("fixtures/lorem.txt").unwrap());
+        let content = Arc::new(fs::read_to_string("fixtures/lorem.txt").unwrap());
         let counter = Counter::Word(content);
 
         assert_eq!(counter.len(), 6);

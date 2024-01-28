@@ -4,7 +4,9 @@ pub mod counters;
 use crate::config::Config;
 use crate::counters::Counter;
 use std::io::Read;
-use std::rc::Rc;
+use std::sync::mpsc;
+use std::sync::Arc;
+use std::thread;
 
 pub struct Wc {
     source_name: Option<String>,
@@ -15,7 +17,7 @@ impl Wc {
     pub fn new(input: impl Read, config: Config) -> Self {
         let config = Self::modify_config_if_needed(config);
         let content = Self::read_content(input);
-        let counters = Self::build_counters(&config, Rc::new(content));
+        let counters = Self::build_counters(&config, Arc::new(content));
         let source_name = config.file_path;
 
         Self {
@@ -24,12 +26,16 @@ impl Wc {
         }
     }
 
-    pub fn count(&self) -> String {
-        let counts: Vec<String> = self
-            .counters
-            .iter()
-            .map(|counter| counter.len().to_string())
-            .collect();
+    pub fn count(self) -> String {
+        let (tx, rx) = mpsc::channel();
+
+        self.counters
+            .into_iter()
+            .for_each(|counter| Self::run_counter(tx.clone(), counter));
+
+        drop(tx);
+
+        let counts = rx.into_iter().collect::<Vec<String>>();
 
         match &self.source_name {
             Some(name) => format!(" {}  {}", counts.join("  "), name),
@@ -60,17 +66,17 @@ impl Wc {
         content
     }
 
-    fn build_counters(config: &Config, content: Rc<String>) -> Vec<Counter> {
+    fn build_counters(config: &Config, content: Arc<String>) -> Vec<Counter> {
         config
             .flags()
             .into_iter()
             .filter_map(|(flag, value)| {
                 if value {
                     match flag {
-                        "count_lines" => Some(Counter::new("Lines", Rc::clone(&content))),
-                        "count_words" => Some(Counter::new("Words", Rc::clone(&content))),
-                        "count_chars" => Some(Counter::new("Chars", Rc::clone(&content))),
-                        "count_bytes" => Some(Counter::new("Bytes", Rc::clone(&content))),
+                        "count_lines" => Some(Counter::new("Lines", Arc::clone(&content))),
+                        "count_words" => Some(Counter::new("Words", Arc::clone(&content))),
+                        "count_chars" => Some(Counter::new("Chars", Arc::clone(&content))),
+                        "count_bytes" => Some(Counter::new("Bytes", Arc::clone(&content))),
                         _ => panic!("Wrong counter"),
                     }
                 } else {
@@ -78,6 +84,12 @@ impl Wc {
                 }
             })
             .collect()
+    }
+
+    fn run_counter(tx: mpsc::Sender<String>, counter: Counter) {
+        thread::spawn(move || {
+            tx.send(counter.len().to_string()).expect("Counting error");
+        });
     }
 }
 
