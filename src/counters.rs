@@ -10,15 +10,15 @@ pub enum Counter {
 impl Counter {
     pub fn new(counter_type: &str, content: Arc<String>) -> Self {
         match counter_type {
-            "Lines" => Self::Line(content),
-            "Words" => Self::Word(content),
-            "Chars" => Self::Char(content),
-            "Bytes" => Self::Byte(content),
+            "lines" => Self::Line(content),
+            "words" => Self::Word(content),
+            "chars" => Self::Char(content),
+            "bytes" => Self::Byte(content),
             _ => panic!("Unknown counter type"),
         }
     }
 
-    pub fn len(&self) -> usize {
+    pub fn len(&self) -> (String, usize) {
         match self {
             Counter::Byte(content) => self.count_bytes(content),
             Counter::Char(content) => self.count_chars(content),
@@ -27,20 +27,20 @@ impl Counter {
         }
     }
 
-    fn count_bytes(&self, content: &Arc<String>) -> usize {
-        content.len()
+    fn count_bytes(&self, content: &Arc<String>) -> (String, usize) {
+        (String::from("bytes"), content.len())
     }
 
-    fn count_chars(&self, content: &Arc<String>) -> usize {
-        content.chars().count()
+    fn count_chars(&self, content: &Arc<String>) -> (String, usize) {
+        (String::from("chars"), content.chars().count())
     }
 
-    fn count_lines(&self, content: &Arc<String>) -> usize {
-        content.lines().count()
+    fn count_lines(&self, content: &Arc<String>) -> (String, usize) {
+        (String::from("lines"), content.lines().count())
     }
 
-    fn count_words(&self, content: &Arc<String>) -> usize {
-        content.split_whitespace().count()
+    fn count_words(&self, content: &Arc<String>) -> (String, usize) {
+        (String::from("words"), content.split_whitespace().count())
     }
 }
 
@@ -54,7 +54,7 @@ mod tests {
         let content = Arc::new(fs::read_to_string("fixtures/lorem.txt").unwrap());
         let counter = Counter::Byte(content);
 
-        assert_eq!(counter.len(), 42);
+        assert_eq!(counter.len(), (String::from("bytes"), 42));
     }
 
     #[test]
@@ -62,7 +62,7 @@ mod tests {
         let content = Arc::new(fs::read_to_string("fixtures/lorem.txt").unwrap());
         let counter = Counter::Char(content);
 
-        assert_eq!(counter.len(), 42);
+        assert_eq!(counter.len(), (String::from("chars"), 42));
     }
 
     #[test]
@@ -70,7 +70,7 @@ mod tests {
         let content = Arc::new(fs::read_to_string("fixtures/lorem.txt").unwrap());
         let counter = Counter::Line(content);
 
-        assert_eq!(counter.len(), 3);
+        assert_eq!(counter.len(), (String::from("lines"), 3));
     }
 
     #[test]
@@ -78,6 +78,6 @@ mod tests {
         let content = Arc::new(fs::read_to_string("fixtures/lorem.txt").unwrap());
         let counter = Counter::Word(content);
 
-        assert_eq!(counter.len(), 6);
+        assert_eq!(counter.len(), (String::from("words"), 6));
     }
 }

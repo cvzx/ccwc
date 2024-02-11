@@ -35,12 +35,9 @@ impl Wc {
 
         drop(tx);
 
-        let counts = rx.into_iter().collect::<Vec<String>>();
+        let counts = rx.into_iter().collect();
 
-        match &self.source_name {
-            Some(name) => format!(" {}  {}", counts.join("  "), name),
-            None => format!(" {}", counts.join("  ")),
-        }
+        Self::format(self.source_name, counts)
     }
 
     fn modify_config_if_needed(config: Config) -> Config {
@@ -73,10 +70,10 @@ impl Wc {
             .filter_map(|(flag, value)| {
                 if value {
                     match flag {
-                        "count_lines" => Some(Counter::new("Lines", Arc::clone(&content))),
-                        "count_words" => Some(Counter::new("Words", Arc::clone(&content))),
-                        "count_chars" => Some(Counter::new("Chars", Arc::clone(&content))),
-                        "count_bytes" => Some(Counter::new("Bytes", Arc::clone(&content))),
+                        "count_lines" => Some(Counter::new("lines", Arc::clone(&content))),
+                        "count_words" => Some(Counter::new("words", Arc::clone(&content))),
+                        "count_chars" => Some(Counter::new("chars", Arc::clone(&content))),
+                        "count_bytes" => Some(Counter::new("bytes", Arc::clone(&content))),
                         _ => panic!("Wrong counter"),
                     }
                 } else {
@@ -86,10 +83,33 @@ impl Wc {
             .collect()
     }
 
-    fn run_counter(tx: mpsc::Sender<String>, counter: Counter) {
+    fn run_counter(tx: mpsc::Sender<(String, usize)>, counter: Counter) {
         thread::spawn(move || {
-            tx.send(counter.len().to_string()).expect("Counting error");
+            let result = counter.len();
+
+            tx.send((result.0.to_owned(), result.1))
+                .expect("Counting error");
         });
+    }
+
+    fn format(source_name: Option<String>, mut results: Vec<(String, usize)>) -> String {
+        results.sort_by(|a, b| Self::order(&a.0).cmp(&Self::order(&b.0)));
+
+        let results: Vec<String> = results.iter().map(|(_, v)| v.to_string()).collect();
+
+        match source_name {
+            Some(name) => format!(" {}  {}", results.join("  "), name),
+            None => format!(" {}", results.join("  ")),
+        }
+    }
+
+    fn order(counter_name: &str) -> usize {
+        match counter_name {
+            "lines" => 1,
+            "words" => 2,
+            "chars" => 3,
+            _ => 4,
+        }
     }
 }
 
